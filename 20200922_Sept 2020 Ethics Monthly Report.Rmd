@@ -1,0 +1,177 @@
+---
+title: "20200922_Sept 2020 Monthly Report"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r packages, include=FALSE}
+library(tidyverse)
+library(here)
+library(tableone)
+library(dplyr)
+library(qwraps2)
+library(plyr)
+options(qwraps2_markup = "markdown")
+```
+
+#Read in the data 
+```{r cleaning data, include=FALSE}
+# Read in data
+data <- read_csv(here::here("Data", "20200930_Sept 2020 Data.csv"))
+
+# Remove redundant columns 
+data <- select(data, -redcap_event_name)
+
+# Read in codebook
+codebook <- read_csv(here::here("Data", "20200922_Ethics Monthly Codebook.csv"))
+
+# Assign new column names
+prefcols <- as.character(colnames(codebook))
+colnames(data) <- prefcols
+rm(prefcols)
+
+# Get rid of redundant rows
+data <- data[!(is.na(data$page)), ]
+
+```
+
+```{r team_lead, include=FALSE}
+
+# Inelegant but functional 
+data <- data %>% 
+  mutate(lead = ifelse(lead == 0, "Mark Hughes", lead)) %>% 
+  mutate(lead = ifelse(lead == 1, "Cynda Rushton", lead)) %>%
+  mutate(lead = ifelse(lead == 2, "Maggie Moon", lead)) %>%
+  mutate(lead = ifelse(lead == 3, "John Ponnala", lead)) %>%
+  mutate(lead = ifelse(lead == 4, "Matt Norvell", lead)) %>%
+  mutate(lead = ifelse(lead == 5, "Alison Turnbull", lead)) %>%
+  mutate(lead = ifelse(lead == 6, "Ty Crowe", lead)) %>%
+  mutate(lead = ifelse(lead == 7, "Zack Berger", lead)) %>%
+  mutate(lead = ifelse(lead == 8, "Sharon Owens", lead)) %>%
+  mutate(lead = ifelse(lead == 9, "Susan Ziegfeld", lead)) %>%
+  mutate(lead = ifelse(lead == 10, "Kathryn Neubauer", lead)) %>%
+  mutate(lead = ifelse(lead == 11, "Jacek Mostwin", lead)) %>%
+  mutate(lead = ifelse(lead == 12, "Ivor Berkowitz", lead)) %>%
+  mutate(lead = ifelse(lead == 13, "Simone Thompson", lead)) %>%
+  mutate(lead = ifelse(lead == 14, "Shannon Barnett", lead)) 
+
+```
+
+```{r response_type, include=FALSE}
+
+# Also inelegant
+# Match response number to response text
+data <- data %>% 
+  mutate(response_0 = ifelse(response_0 == 1, "Phone call with the requester. ", "")) %>% 
+  mutate(response_1 = ifelse(response_1 == 1, "Phone discussion between the clinical team and ethics. ", "")) %>% 
+  mutate(response_2 = ifelse(response_2 == 1, "Phone discussion between patient or their proxy(ies) and ethics. ", "")) %>% 
+  mutate(response_3 = ifelse(response_3 == 1, "In-person meeting between clinical team and ethics. ", "")) %>%
+  mutate(response_4 = ifelse(response_4 == 1, "In-person meeting between clinical team, patient/patient proxy(ies) and ethics. ", "")) %>%
+  mutate(response_5 = ifelse(response_5 == 1, "In-person meeting between clinical team, patient/patient proxy(ies) and ethics. ", "")) %>%
+  mutate(response_6 = ifelse(response_6 == 1, "Referred caller to legal service. ", "")) %>%
+  mutate(response_7 = ifelse(response_7 == 1, "Referred caller to patient relations. ", "")) %>%
+  mutate(response_8 = ifelse(response_8 == 1, "No response to page.", "")) 
+
+# Combine responses into one column
+data <- data %>% 
+  mutate(combined_response = paste0(response_0, response_1, response_2, response_3, response_4, response_5, response_6, response_7, response_8))
+
+# Delete individual response columns
+data <- data %>% 
+  select(-starts_with("response_"))
+
+```
+
+```{r participating_members, include=FALSE}
+# Trynna be fancy 
+# Grab relevant columns for naming 
+data_subset = data[, grepl('particip_',colnames(data))]
+
+# Read in participant names map 
+codenames <- read_csv(here::here("Data", "20200922_Participant Code to Names.csv"))
+
+# Turn codenames df into named vector
+participant_map <- codenames$participant_name
+names(participant_map) <- codenames$participant_code
+
+# Paste "particip_" into map vector names to match dataset colnames 
+names(participant_map) = paste0('particip_',names(participant_map))
+data_subset_cols = colnames(data_subset)
+
+a = apply(data_subset, 1, function(x) {
+  participants = data_subset_cols[x == 1]                        # grab column names associated with "1" in df 
+  participant_names = participant_map[participants]              # match column name to participant name using map 
+  participant_names = paste(participant_names, collapse = '; ')  # paste together participant names by row 
+  print(participant_names)
+})
+
+data <- data %>% 
+  mutate(participants = a) %>% 
+  select(-starts_with('particip_'))
+
+# Now for the "other names" 
+for(i in 1:nrow(data)) {
+  hmph <- gsub("other", data$other_names[i], data$participants[i])
+  data[i,"participants"] <- hmph
+  print(data$participants[i])
+}
+
+#data <- data %>% 
+#  select(-other_names)
+
+```
+
+```{r document, include=FALSE}
+
+# document uploaded? 
+
+data <- data %>% 
+  mutate(document = ifelse(document == "[document]", "Yes", document)) %>% 
+  mutate(document = ifelse(is.na(document) == TRUE, "No", document))
+
+```
+
+```{r time}
+
+data <- data %>% 
+  mutate(leader_time = ifelse(is.na(leader_time) == FALSE, leader_time, "")) %>% 
+  mutate(member_time = ifelse(is.na(member_time) == FALSE, member_time, ""))
+
+```
+
+```{r complete}
+
+data <- data %>% 
+  mutate(survey_done = ifelse(survey_done == 0, "Incomplete", survey_done)) %>% 
+  mutate(survey_done = ifelse(survey_done == 1, "Unverified", survey_done)) %>% 
+  mutate(survey_done = ifelse(survey_done == 2, "Complete", survey_done))
+
+```
+
+```{r date}
+
+data <- separate(data, 
+                  date, 
+                  c("date", "time"), 
+                  sep = " ")
+
+```
+
+```{r reorder}
+
+data <- data %>% 
+  select(id, date, page, lead, combined_response, participants, document, leader_time, member_time, survey_done)
+
+prefcols <- c("ID", "Date of page", "Text of page", "Leading", "Response", "Ethics members at meeting", "Document uploaded to Redcap?", "Leader time (min)", "Member time (min)", "Survey completed?")
+
+colnames(data) <- prefcols
+
+write_csv(data, "20200930_September 2020 Raw 2.csv")
+
+```
+
+
+
+  
