@@ -19,7 +19,7 @@ options(qwraps2_markup = "markdown")
 #Read in the data 
 ```{r cleaning data, include=FALSE}
 # Read in data
-data <- read_csv(here::here("Data", "20200930_Sept 2020 Data.csv"))
+data <- read_csv(here::here("Data", "20210329_March 2021 Data.csv"))
 
 # Remove redundant columns 
 data <- select(data, -redcap_event_name)
@@ -55,7 +55,8 @@ data <- data %>%
   mutate(lead = ifelse(lead == 11, "Jacek Mostwin", lead)) %>%
   mutate(lead = ifelse(lead == 12, "Ivor Berkowitz", lead)) %>%
   mutate(lead = ifelse(lead == 13, "Simone Thompson", lead)) %>%
-  mutate(lead = ifelse(lead == 14, "Shannon Barnett", lead)) 
+  mutate(lead = ifelse(lead == 14, "Shannon Barnett", lead)) %>% 
+  mutate(lead = ifelse(lead == 15, "Caitlin McGeehan", lead))
 
 ```
 
@@ -101,7 +102,7 @@ names(participant_map) = paste0('particip_',names(participant_map))
 data_subset_cols = colnames(data_subset)
 
 a = apply(data_subset, 1, function(x) {
-  participants = data_subset_cols[x == 1]                        # grab column names associated with "1" in df 
+  participants = data_subset_cols[x == 1]                        # grab column names, i.e. column 1 in df 
   participant_names = participant_map[participants]              # match column name to participant name using map 
   participant_names = paste(participant_names, collapse = '; ')  # paste together participant names by row 
   print(participant_names)
@@ -168,7 +169,7 @@ prefcols <- c("ID", "Date of page", "Text of page", "Leading", "Response", "Ethi
 
 colnames(data) <- prefcols
 
-write_csv(data, "20200930_September 2020 Raw 2.csv")
+write_csv(data, "20210329_March 2021 Report.csv")
 
 ```
 
